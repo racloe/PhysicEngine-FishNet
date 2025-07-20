@@ -78,7 +78,6 @@ public class PredictionMotor : NetworkBehaviour
             TimeManager.OnTick -= OnTick;
             TimeManager.OnPostTick -= OnPostTick;
         }
-        
     }
 
     private void OnTick()
