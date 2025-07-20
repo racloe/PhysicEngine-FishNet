@@ -1,0 +1,54 @@
+using System;
+using System.Collections.Generic;
+using FishNet;
+using UnityEngine;
+
+public class Bullet : MonoBehaviour
+{
+    public static Dictionary<int, Bullet> Bullets = new Dictionary<int, Bullet>();
+
+    [HideInInspector] public List<BulletState> PastStates = new List<BulletState>();
+    
+    [HideInInspector] public int identification;
+    [HideInInspector] public int ownerId;
+    private Vector3 _direction;
+    private float _speed;
+
+
+    private void Awake()
+    {
+        if (InstanceFinder.IsServerStarted)
+            InstanceFinder.TimeManager.OnTick += OnTick;
+    }
+
+    public void Initialize(Vector3 dir, float speed, int bulletId, int ownerPlayerId)
+    {
+        _direction = dir;
+        _speed = speed;
+        Bullets.Add(bulletId, this);
+        identification = bulletId;
+        ownerId = ownerPlayerId;
+    }
+
+
+    private void Update()
+    {
+        transform.position += _direction * _speed * Time.deltaTime;
+    }
+
+    private void OnTick()
+    {
+        if (PastStates.Count > InstanceFinder.TimeManager.TickRate)
+            PastStates.RemoveAt(0);
+
+        PastStates.Add(new BulletState { Position = transform.position });
+        
+        
+    }
+
+
+    public class BulletState
+    {
+        public Vector3 Position;
+    }
+}
