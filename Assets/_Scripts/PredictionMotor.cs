@@ -8,8 +8,8 @@ public class PredictionMotor : NetworkBehaviour
 {
     public struct MoveData : IReplicateData
     {
-        public float Horizontal;
-        public float Vertical;
+        public readonly float Horizontal;
+        public readonly float Vertical;
         private uint _tick;
 
         public MoveData(float horizontal, float vertical)
@@ -18,8 +18,6 @@ public class PredictionMotor : NetworkBehaviour
             Vertical = vertical;
             _tick = 0;
         }
-        
-        public uint Tick { get => _tick; set => _tick = value; }
         public void Dispose(){}
         public uint GetTick() => _tick;
         public void SetTick(uint value) => _tick = value;
@@ -27,10 +25,10 @@ public class PredictionMotor : NetworkBehaviour
 
     public struct ReconcileData : IReconcileData
     {
-        public Vector3 Position;
-        public Quaternion Rotation;
-        public Vector3 Velocity;
-        public Vector3 AngularVelocity;
+        public readonly Vector3 Position;
+        public readonly Quaternion Rotation;
+        public readonly Vector3 Velocity;
+        public readonly Vector3 AngularVelocity;
         private uint _tick;
 
         public ReconcileData(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
@@ -99,10 +97,7 @@ public class PredictionMotor : NetworkBehaviour
     {
         if (IsOwner)
         {
-            Reconciliation(default);
-
-            MoveData data;
-            GatherInputs(out data);
+            GatherInputs(out var data);
 
             Move(data);
         }
@@ -115,9 +110,7 @@ public class PredictionMotor : NetworkBehaviour
 
     private void OnPostTick()
     {
-        ReconcileData data = new ReconcileData(transform.position, transform.rotation, _rigidbody.linearVelocity, _rigidbody.angularVelocity);
-
-        Reconciliation(data);
+        CreateReconcile();
     }
 
 
