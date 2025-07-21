@@ -1,21 +1,26 @@
+using System;
 using FishNet.Object;
 using FishNet.Object.Prediction;
 using FishNet.Transporting;
 using Unity.VisualScripting;
+using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PredictionMotor : NetworkBehaviour
 {
-    public struct MoveData : IReplicateData
+    public struct ControlData : IReplicateData
     {
         public readonly float Horizontal;
         public readonly float Vertical;
+        public readonly bool Fire;
         private uint _tick;
 
-        public MoveData(float horizontal, float vertical)
+        public ControlData(float horizontal, float vertical, bool fire) : this()
         {
             Horizontal = horizontal;
             Vertical = vertical;
+            Fire = fire;
             _tick = 0;
         }
         public void Dispose(){}
@@ -31,7 +36,7 @@ public class PredictionMotor : NetworkBehaviour
         public readonly Vector3 AngularVelocity;
         private uint _tick;
 
-        public ReconcileData(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
+        public ReconcileData(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity) : this()
         {
             Position = position;
             Rotation = rotation;
@@ -47,32 +52,31 @@ public class PredictionMotor : NetworkBehaviour
 
     [SerializeField] private float movementForce;
     [SerializeField] private float torqueForce;
+    [SerializeField] private float recoilForce;
 
     private Rigidbody _rigidbody;
     private bool _subscribed;
-
+    
+    private float _verticalInput;
+    private float _horizontalInput;
+    private bool _fire;
+    
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
     }
 
-    /*public override void OnStartClient()
-    {
-        base.OnStartClient();
-
-        SubscribeToTimeManager(true);
-    }
-
-    public override void OnStartServer()
-    {
-        base.OnStartServer();
-
-        SubscribeToTimeManager(true);
-    }*/
-
     public override void OnStartNetwork()
     {
         SubscribeToTimeManager(true);
+    }
+
+    public override void OnStartClient()
+    {
+        if (!IsOwner)
+            return;
+
+
     }
 
     private void SubscribeToTimeManager(bool subscribe)
@@ -97,24 +101,32 @@ public class PredictionMotor : NetworkBehaviour
         }
         
     }
-    
+
+    private void Update()
+    {
+        if (!IsOwner)
+            return;
+
+        _horizontalInput = Input.GetAxis("Horizontal");
+        _verticalInput = Input.GetAxis("Vertical");
+        if(!_fire)
+            _fire = Input.GetMouseButtonDown(0);
+    }
+
 
     private void OnTick()
     {
         if (IsOwner)
         {
-            GatherInputs(out var data);
-
-            Move(data);
-        }
-        else
-        {
-            Move(default);
+            // GatherInputs(out var data);
+            ControlData data = new ControlData(_horizontalInput, _verticalInput, _fire);
             
+            Move(data);
         }
 
         if (IsServerInitialized)
         {
+            Move(default);
         }
     }
 
@@ -134,25 +146,30 @@ public class PredictionMotor : NetworkBehaviour
     }
 
     [Replicate]
-    private void Move(MoveData data, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
+    private void Move(ControlData data, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
     {
         _rigidbody.AddForce(transform.forward * (data.Vertical * movementForce), ForceMode.Acceleration);
 
         _rigidbody.AddTorque(transform.up * (data.Horizontal * torqueForce), ForceMode.Acceleration);
+
+        if (data.Fire)
+        {
+            _rigidbody.AddForce(-transform.forward * recoilForce, ForceMode.Impulse);
+            _fire = false;
+        }
     }
 
-    private void GatherInputs(out MoveData data)
+    /*private void GatherInputs(out ControlData data)
     {
         data = default;
 
-        var horizontal = Input.GetAxis("Horizontal");
-        var vertical = Input.GetAxis("Vertical");
+        
 
-        if (horizontal == 0f && vertical == 0f)
+        if (horizontal == 0f && vertical == 0f && fire == false)
             return;
 
-        data = new MoveData(horizontal, vertical);
-    }
+        data = new ControlData(horizontal, vertical, fire);
+    }*/
 
     public override void CreateReconcile()
     {
