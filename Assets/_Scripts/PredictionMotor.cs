@@ -56,7 +56,7 @@ public class PredictionMotor : NetworkBehaviour
         _rigidbody = GetComponent<Rigidbody>();
     }
 
-    public override void OnStartClient()
+    /*public override void OnStartClient()
     {
         base.OnStartClient();
 
@@ -67,6 +67,11 @@ public class PredictionMotor : NetworkBehaviour
     {
         base.OnStartServer();
 
+        SubscribeToTimeManager(true);
+    }*/
+
+    public override void OnStartNetwork()
+    {
         SubscribeToTimeManager(true);
     }
 
@@ -92,6 +97,7 @@ public class PredictionMotor : NetworkBehaviour
         }
         
     }
+    
 
     private void OnTick()
     {
@@ -101,10 +107,14 @@ public class PredictionMotor : NetworkBehaviour
 
             Move(data);
         }
+        else
+        {
+            Move(default);
+            
+        }
 
         if (IsServerInitialized)
         {
-            Move(default);
         }
     }
 
@@ -154,7 +164,7 @@ public class PredictionMotor : NetworkBehaviour
         Reconciliation(data);
     }
 
-    private void OnDestroy()
+    public override void OnStopNetwork()
     {
         SubscribeToTimeManager(false);
     }
