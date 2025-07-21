@@ -71,7 +71,9 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 3500247644044582310}
   movementForce: 200
   torqueForce: 40
-  recoilForce: 1000
+  recoilForce: 200
+  hitRadius: 4
+  hitPushForce: 800
 --- !u!136 &104949989545405894
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -162,7 +164,7 @@ MonoBehaviour:
   _networkTransform: {fileID: 0}
   _ownerInterpolation: 1
   _ownerSmoothedProperties: 255
-  _adaptiveInterpolation: 3
+  _adaptiveInterpolation: 4
   _spectatorSmoothedProperties: 255
   _spectatorInterpolation: 2
   _enableTeleport: 0

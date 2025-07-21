@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using FishNet.Object;
 using FishNet.Object.Prediction;
 using FishNet.Transporting;
+using Palmmedia.ReportGenerator.Core.CodeAnalysis;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
@@ -54,36 +56,29 @@ public class PredictionMotor : NetworkBehaviour
     [SerializeField] private float torqueForce;
     [SerializeField] private float recoilForce;
 
+    [SerializeField] private float hitRadius;
+    [SerializeField] private float hitPushForce;
+    
+    public static List<PredictionMotor> AllTanks = new List<PredictionMotor>();
+
     private Rigidbody _rigidbody;
     private bool _subscribed;
     
     private float _verticalInput;
     private float _horizontalInput;
     private bool _fire;
-
-    private InputAction _moveAction;
-    private InputAction _fireAction;
     
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
+        AllTanks.Add(this);
     }
 
     public override void OnStartNetwork()
     {
         SubscribeToTimeManager(true);
     }
-
-    public override void OnStartClient()
-    {
-        if (!IsOwner)
-            return;
-
-        InputActionMap playerActionMap = InputSystem.actions.FindActionMap("Player");
-        
-        _moveAction = playerActionMap.FindAction("Move", true);
-        _fireAction = playerActionMap.FindAction("Attack", true);
-    }
+    
 
     private void SubscribeToTimeManager(bool subscribe)
     {
@@ -112,17 +107,11 @@ public class PredictionMotor : NetworkBehaviour
     {
         if (!IsOwner)
             return;
-        
-        Vector2 moveActionValue = _moveAction.ReadValue<Vector2>();
-        
-        _horizontalInput = moveActionValue.x;
-        _verticalInput = moveActionValue.y;
 
-        _fire = _fireAction.IsPressed();
-
-        // _horizontalInput = Input.GetAxis("Horizontal");
-        // _verticalInput = Input.GetAxis("Vertical");
-        // _fire = Input.GetMouseButtonDown(0);
+        _horizontalInput = Input.GetAxis("Horizontal");
+        _verticalInput = Input.GetAxis("Vertical");
+        if(!_fire)
+            _fire = Input.GetMouseButtonDown(0);
     }
 
 
@@ -163,22 +152,46 @@ public class PredictionMotor : NetworkBehaviour
         _rigidbody.AddForce(transform.forward * (data.Vertical * movementForce), ForceMode.Acceleration);
 
         _rigidbody.AddTorque(transform.up * (data.Horizontal * torqueForce), ForceMode.Acceleration);
-        
-        if(data.Fire)
+
+        if (data.Fire)
+        {
             _rigidbody.AddForce(-transform.forward * recoilForce, ForceMode.Impulse);
+            _fire = false;
+        }
+
+        var isAuthoritative = IsServerInitialized;
+        var isPredicted = IsOwner;
+
+        if (isAuthoritative || isPredicted)
+        {
+            foreach (var other in AllTanks)
+            {
+                if(other == this) continue;
+                
+                // if(InstanceId() > other.InstanceId())
+                //     continue;
+                
+                var myPos = transform.position;
+                var otherPos = other.transform.position;
+                var distance = Vector3.Distance(myPos, otherPos);
+
+                if (distance < hitRadius)
+                {
+                    var dir = (myPos - otherPos).normalized;
+                    
+                    _rigidbody.AddForce(dir * hitPushForce, ForceMode.Impulse);
+                    // if(isAuthoritative)
+                    //     other._rigidbody.AddForce(-dir * hitPushForce, ForceMode.Impulse);
+                }
+            }
+        }
     }
 
-    /*private void GatherInputs(out ControlData data)
+    private int InstanceId()
     {
-        data = default;
+        return GetInstanceID();
+    }
 
-        
-
-        if (horizontal == 0f && vertical == 0f && fire == false)
-            return;
-
-        data = new ControlData(horizontal, vertical, fire);
-    }*/
 
     public override void CreateReconcile()
     {
@@ -193,6 +206,13 @@ public class PredictionMotor : NetworkBehaviour
     public override void OnStopNetwork()
     {
         SubscribeToTimeManager(false);
+        AllTanks.Remove(this);
+    }
+
+    private void OnDestroy()
+    {
+        SubscribeToTimeManager(false);
+        AllTanks.Remove(this);
     }
 
 }

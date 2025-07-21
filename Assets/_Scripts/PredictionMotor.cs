@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using FishNet.Object;
 using FishNet.Object.Prediction;
 using FishNet.Transporting;
+using Palmmedia.ReportGenerator.Core.CodeAnalysis;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
@@ -54,6 +56,11 @@ public class PredictionMotor : NetworkBehaviour
     [SerializeField] private float torqueForce;
     [SerializeField] private float recoilForce;
 
+    [SerializeField] private float hitRadius;
+    [SerializeField] private float hitPushForce;
+    
+    public static List<PredictionMotor> AllTanks = new List<PredictionMotor>();
+
     private Rigidbody _rigidbody;
     private bool _subscribed;
     
@@ -64,20 +71,14 @@ public class PredictionMotor : NetworkBehaviour
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
+        AllTanks.Add(this);
     }
 
     public override void OnStartNetwork()
     {
         SubscribeToTimeManager(true);
     }
-
-    public override void OnStartClient()
-    {
-        if (!IsOwner)
-            return;
-
-
-    }
+    
 
     private void SubscribeToTimeManager(bool subscribe)
     {
@@ -157,19 +158,40 @@ public class PredictionMotor : NetworkBehaviour
             _rigidbody.AddForce(-transform.forward * recoilForce, ForceMode.Impulse);
             _fire = false;
         }
+
+        var isAuthoritative = IsServerInitialized;
+        var isPredicted = IsOwner;
+
+        if (isAuthoritative || isPredicted)
+        {
+            foreach (var other in AllTanks)
+            {
+                if(other == this) continue;
+                
+                // if(InstanceId() > other.InstanceId())
+                //     continue;
+                
+                var myPos = transform.position;
+                var otherPos = other.transform.position;
+                var distance = Vector3.Distance(myPos, otherPos);
+
+                if (distance < hitRadius)
+                {
+                    var dir = (myPos - otherPos).normalized;
+                    dir.y = 0;
+                    _rigidbody.AddForce(dir * hitPushForce, ForceMode.Impulse);
+                    // if(isAuthoritative)
+                    //     other._rigidbody.AddForce(-dir * hitPushForce, ForceMode.Impulse);
+                }
+            }
+        }
     }
 
-    /*private void GatherInputs(out ControlData data)
+    private int InstanceId()
     {
-        data = default;
+        return GetInstanceID();
+    }
 
-        
-
-        if (horizontal == 0f && vertical == 0f && fire == false)
-            return;
-
-        data = new ControlData(horizontal, vertical, fire);
-    }*/
 
     public override void CreateReconcile()
     {
@@ -184,6 +206,13 @@ public class PredictionMotor : NetworkBehaviour
     public override void OnStopNetwork()
     {
         SubscribeToTimeManager(false);
+        AllTanks.Remove(this);
+    }
+
+    private void OnDestroy()
+    {
+        SubscribeToTimeManager(false);
+        AllTanks.Remove(this);
     }
 
 }

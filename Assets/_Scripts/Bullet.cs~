@@ -55,7 +55,6 @@ public class Bullet : MonoBehaviour
         {
             if (ownerId == other.GetComponent<BulletFire>().OwnerId) return;
             var dir = (other.transform.position - transform.position).normalized;
-            dir.y = 0;
             other.GetComponent<Rigidbody>().AddForce(dir * damageForce, ForceMode.Impulse);
             Bullets.Remove(identification);
             Destroy(gameObject);

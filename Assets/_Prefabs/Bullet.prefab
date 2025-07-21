@@ -151,3 +151,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   identification: 0
   ownerId: 0
+  damageForce: 600
