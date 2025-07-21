@@ -70,8 +70,8 @@ MonoBehaviour:
   _componentIndexCache: 1
   _addedNetworkObject: {fileID: 3500247644044582310}
   _networkObjectCache: {fileID: 3500247644044582310}
-  movementForce: 100
-  torqueForce: 20
+  movementForce: 200
+  torqueForce: 40
 --- !u!136 &104949989545405894
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -198,12 +198,12 @@ MonoBehaviour:
     Position: 1
     Rotation: 1
     Scale: 0
-  _interpolation: 2
-  _extrapolation: 2
+  _interpolation: 1
+  _extrapolation: 1
   _enableTeleport: 0
   _teleportThreshold: 1
-  _clientAuthoritative: 1
-  _sendToOwner: 1
+  _clientAuthoritative: 0
+  _sendToOwner: 0
   _interval: 1
   _synchronizePosition: 1
   _positionSensitivity: 0.001

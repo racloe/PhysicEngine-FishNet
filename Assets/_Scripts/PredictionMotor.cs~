@@ -1,28 +1,37 @@
-using System;
 using FishNet.Object;
 using FishNet.Object.Prediction;
+using FishNet.Transporting;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PredictionMotor : NetworkBehaviour
 {
-    private struct MoveData
+    public struct MoveData : IReplicateData
     {
         public float Horizontal;
         public float Vertical;
+        private uint _tick;
 
         public MoveData(float horizontal, float vertical)
         {
             Horizontal = horizontal;
             Vertical = vertical;
+            _tick = 0;
         }
+        
+        public uint Tick { get => _tick; set => _tick = value; }
+        public void Dispose(){}
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
     }
 
-    private struct ReconcileData
+    public struct ReconcileData : IReconcileData
     {
         public Vector3 Position;
         public Quaternion Rotation;
         public Vector3 Velocity;
         public Vector3 AngularVelocity;
+        private uint _tick;
 
         public ReconcileData(Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
         {
@@ -30,7 +39,11 @@ public class PredictionMotor : NetworkBehaviour
             Rotation = rotation;
             Velocity = velocity;
             AngularVelocity = angularVelocity;
+            _tick = 0;
         }
+        
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
     }
 
     [SerializeField] private float movementForce;
@@ -78,23 +91,24 @@ public class PredictionMotor : NetworkBehaviour
             TimeManager.OnTick -= OnTick;
             TimeManager.OnPostTick -= OnPostTick;
         }
+        
     }
 
     private void OnTick()
     {
         if (IsOwner)
         {
-            Reconciliation(default, false);
+            Reconciliation(default);
 
             MoveData data;
             GatherInputs(out data);
 
-            Move(data, false);
+            Move(data);
         }
 
         if (IsServerInitialized)
         {
-            Move(default, true);
+            Move(default);
         }
     }
 
@@ -102,12 +116,12 @@ public class PredictionMotor : NetworkBehaviour
     {
         ReconcileData data = new ReconcileData(transform.position, transform.rotation, _rigidbody.linearVelocity, _rigidbody.angularVelocity);
 
-        Reconciliation(data, true);
+        Reconciliation(data);
     }
 
 
     [Reconcile]
-    private void Reconciliation(ReconcileData data, bool asServer)
+    private void Reconciliation(ReconcileData data, Channel channel = Channel.Unreliable)
     {
         transform.position = data.Position;
         transform.rotation = data.Rotation;
@@ -116,7 +130,7 @@ public class PredictionMotor : NetworkBehaviour
     }
 
     [Replicate]
-    private void Move(MoveData data, bool asServer, bool replaying = false)
+    private void Move(MoveData data, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
     {
         _rigidbody.AddForce(transform.forward * (data.Vertical * movementForce), ForceMode.Acceleration);
 
@@ -134,6 +148,16 @@ public class PredictionMotor : NetworkBehaviour
             return;
 
         data = new MoveData(horizontal, vertical);
+    }
+
+    public override void CreateReconcile()
+    {
+        var data = new ReconcileData(
+            transform.position,
+            transform.rotation,
+            _rigidbody.linearVelocity,
+            _rigidbody.angularVelocity);
+        Reconciliation(data);
     }
 
     private void OnDestroy()
