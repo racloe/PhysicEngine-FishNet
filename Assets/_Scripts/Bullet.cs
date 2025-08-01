@@ -1,55 +1,61 @@
 using System;
 using System.Collections.Generic;
 using FishNet;
+using FishNet.Object;
 using UnityEngine;
 
-public class Bullet : MonoBehaviour
+public class Bullet : NetworkBehaviour
 {
-    public static Dictionary<int, Bullet> Bullets = new Dictionary<int, Bullet>();
-
-    [HideInInspector] public List<BulletState> PastStates = new List<BulletState>();
     
-    [HideInInspector] public int identification;
     [HideInInspector] public int ownerId;
     private Vector3 _direction;
-    private float _speed;
+    private float _force;
 
     [SerializeField] private float damageForce;
+    [SerializeField] private float trailForce;
+    private Rigidbody _rigidbody;
 
 
     private void Awake()
     {
-        if (InstanceFinder.IsServerStarted)
-            InstanceFinder.TimeManager.OnTick += OnTick;
+        _rigidbody = GetComponent<Rigidbody>();
     }
 
-    public void Initialize(Vector3 dir, float speed, int bulletId, int ownerPlayerId)
+    public void Initialize(Vector3 dir, float force, int ownerPlayerId)
     {
         _direction = dir;
-        _speed = speed;
-        Bullets.Add(bulletId, this);
-        identification = bulletId;
+        _force = force;
         ownerId = ownerPlayerId;
     }
 
 
     private void Update()
     {
-        transform.position += _direction * _speed * Time.deltaTime;
+        // transform.position += _direction * _force * Time.deltaTime;
+        _rigidbody.AddForce(_direction * _force, ForceMode.Acceleration);
+        CheckTankAndApplyForce();
     }
-
-    private void OnTick()
+    
+    private void CheckTankAndApplyForce()
     {
-        /*if (PastStates.Count > InstanceFinder.TimeManager.TickRate)
-            PastStates.RemoveAt(0);
-
-        PastStates.Add(new BulletState { Position = transform.position });*/
-        
+        foreach (var tank in PredictionMotor.AllTanks.Values)
+        {
+            if(tank.Owner.ClientId == ownerId)
+                continue;
+            var tankPos = tank.transform.position;
+            var distance = Vector3.Distance(transform.position, tankPos);
+            if (distance < 5)
+            {
+                var dir = (tankPos - transform.position).normalized;
+                var force = 5 / distance * trailForce;
+                _rigidbody.AddForce(dir * force, ForceMode.Acceleration);
+            }
+        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if(!InstanceFinder.IsServerStarted) return;
+        if(!IsServerInitialized) return;
 
         if (other.CompareTag("Tank"))
         {
@@ -57,15 +63,7 @@ public class Bullet : MonoBehaviour
             var dir = (other.transform.position - transform.position).normalized;
             dir.y = 0;
             other.GetComponent<Rigidbody>().AddForce(dir * damageForce, ForceMode.Impulse);
-            Bullets.Remove(identification);
             Destroy(gameObject);
         }
-            
-    }
-
-
-    public class BulletState
-    {
-        public Vector3 Position;
     }
 }

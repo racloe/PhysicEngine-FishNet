@@ -59,7 +59,7 @@ public class PredictionMotor : NetworkBehaviour
     [SerializeField] private float hitRadius;
     [SerializeField] private float hitPushForce;
     
-    public static List<PredictionMotor> AllTanks = new List<PredictionMotor>();
+    public static Dictionary<int, PredictionMotor> AllTanks = new ();
 
     private Rigidbody _rigidbody;
     private bool _subscribed;
@@ -71,7 +71,7 @@ public class PredictionMotor : NetworkBehaviour
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
-        AllTanks.Add(this);
+        AllTanks.Add(Owner.ClientId, this);
     }
 
     public override void OnStartNetwork()
@@ -164,7 +164,7 @@ public class PredictionMotor : NetworkBehaviour
 
         if (isAuthoritative || isPredicted)
         {
-            foreach (var other in AllTanks)
+            foreach (var other in AllTanks.Values)
             {
                 if(other == this) continue;
                 
@@ -206,13 +206,13 @@ public class PredictionMotor : NetworkBehaviour
     public override void OnStopNetwork()
     {
         SubscribeToTimeManager(false);
-        AllTanks.Remove(this);
+        AllTanks.Remove(Owner.ClientId);
     }
 
     private void OnDestroy()
     {
         SubscribeToTimeManager(false);
-        AllTanks.Remove(this);
+        AllTanks.Remove(Owner.ClientId);
     }
 
 }

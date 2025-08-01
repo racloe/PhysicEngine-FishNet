@@ -52,8 +52,8 @@ MonoBehaviour:
   _componentIndexCache: 0
   _addedNetworkObject: {fileID: 3500247644044582310}
   _networkObjectCache: {fileID: 3500247644044582310}
-  bulletPrefab: {fileID: -401142412700608863, guid: 8e13f90acf1fa9f448a8586ee899258e, type: 3}
-  bulletSpeed: 5
+  bulletPrefab: {fileID: 6076530006001337811, guid: 8e13f90acf1fa9f448a8586ee899258e, type: 3}
+  bulletSpeed: 300
 --- !u!114 &2950833942872250618
 MonoBehaviour:
   m_ObjectHideFlags: 0
